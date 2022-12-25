@@ -1,5 +1,6 @@
 import {AddTodolistActionType, RemoveTodolistActionType, SetTodolistsActionType} from './todolists-reducer'
 import {
+    ResponseType,
     RESULT_CODE,
     TaskPriorities,
     TaskStatuses,
@@ -13,7 +14,7 @@ import {setError, SetErrorType, setStatus, SetStatusType} from "../../app/app-re
 import {Simulate} from "react-dom/test-utils";
 import error = Simulate.error;
 import axios, {AxiosError} from "axios";
-import {handleServerNetworkError} from "../../utils/errors-utils";
+import {handleServerAppError, handleServerNetworkError} from "../../utils/errors-utils";
 
 const initialState: TasksStateType = {}
 
@@ -91,11 +92,14 @@ export const addTaskTC = (title: string, todolistId: string) => async (dispatch:
             dispatch(action)
             dispatch(setStatus('succeeded'))
         } else {
-            if (res.data.messages.length) {
-                dispatch(setError(res.data.messages[0]))
-            } else {
-                dispatch(setError('some error'))
-            }
+
+            handleServerAppError<{ item: TaskType }>(dispatch, res.data)
+
+            // if (res.data.messages.length) {
+            //     dispatch(setError(res.data.messages[0]))
+            // } else {
+            //     dispatch(setError('some error'))
+            // }
             dispatch(setStatus('failed'))
         }
     } catch (e) {
@@ -134,12 +138,14 @@ export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelT
                     dispatch(action)
                     dispatch(setStatus('succeeded'))
                 } else {
-                    if (res.data.messages.length) {
-                        dispatch(setError(res.data.messages[0]))
-                    } else {
-                        dispatch(setError('some error'))
-                    }
-                    dispatch(setStatus('failed'))
+
+                    handleServerAppError(dispatch, res.data)
+
+                    // if (res.data.messages.length) {
+                    //     dispatch(setError(res.data.messages[0]))
+                    // } else {
+                    //     dispatch(setError('some error'))
+                    // }
                 }
             }).catch((error: AxiosError<{ message: string }>) => {
             const err = error.response ? error.response.data.message : error.message

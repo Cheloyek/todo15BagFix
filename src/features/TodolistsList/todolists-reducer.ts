@@ -1,8 +1,10 @@
-import {todolistsAPI, TodolistType} from '../../api/todolists-api'
+import {RESULT_CODE, todolistsAPI, TodolistType} from '../../api/todolists-api'
 import {Dispatch} from 'redux'
 import {RequestStatusType, setError, SetErrorType, setStatus, SetStatusType} from "../../app/app-reducer";
 import {AxiosError} from "axios";
-import {handleServerNetworkError} from "../../utils/errors-utils";
+import {handleServerAppError, handleServerNetworkError} from "../../utils/errors-utils";
+import {Simulate} from "react-dom/test-utils";
+import error = Simulate.error;
 
 const initialState: Array<TodolistDomainType> = []
 
@@ -73,9 +75,16 @@ export const addTodolistTC = (title: string) => {
         dispatch(setStatus('loading'))
         todolistsAPI.createTodolist(title)
             .then((res) => {
-                dispatch(addTodolistAC(res.data.data.item))
-                dispatch(setStatus('succeeded'))
-            })
+                if (res.data.resultCode === RESULT_CODE.SUCCESS) {
+                    dispatch(addTodolistAC(res.data.data.item))
+                    dispatch(setStatus('succeeded'))
+                } else {
+                    handleServerAppError<{item: TodolistType}>(dispatch, res.data)
+                }
+
+            }).catch((e) => {
+            handleServerNetworkError(dispatch, e.message)
+        })
     }
 }
 export const changeTodolistTitleTC = (id: string, title: string) => {
