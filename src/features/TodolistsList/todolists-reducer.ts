@@ -1,7 +1,8 @@
 import {todolistsAPI, TodolistType} from '../../api/todolists-api'
 import {Dispatch} from 'redux'
-import {RequestStatusType, setError, setErrorType, setStatus, setStatusType} from "../../app/app-reducer";
+import {RequestStatusType, setError, SetErrorType, setStatus, SetStatusType} from "../../app/app-reducer";
 import {AxiosError} from "axios";
+import {handleServerNetworkError} from "../../utils/errors-utils";
 
 const initialState: Array<TodolistDomainType> = []
 
@@ -60,10 +61,10 @@ export const removeTodolistTC = (todolistId: string) => {
                 dispatch(removeTodolistAC(todolistId))
                 dispatch(setStatus('succeeded'))
             })
-            .catch((e) => {
+            .catch((error: AxiosError<{ message: string }>) => {
+                const err = error.response ? error.response.data.message : error.message
                 dispatch(changeTodoListEntityStatusAC(todolistId, 'idle'))
-                dispatch(setStatus('failed'))
-                dispatch(setError(e.message))
+                handleServerNetworkError(dispatch, err)
             })
     }
 }
@@ -99,8 +100,8 @@ type ActionsType =
     | ReturnType<typeof changeTodolistFilterAC>
     | ReturnType<typeof changeTodoListEntityStatusAC>
     | SetTodolistsActionType
-    | setErrorType
-    | setStatusType
+    | SetErrorType
+    | SetStatusType
 export type FilterValuesType = 'all' | 'active' | 'completed';
 export type TodolistDomainType = TodolistType & {
     filter: FilterValuesType

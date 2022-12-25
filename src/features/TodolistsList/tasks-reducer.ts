@@ -1,11 +1,19 @@
 import {AddTodolistActionType, RemoveTodolistActionType, SetTodolistsActionType} from './todolists-reducer'
-import {TaskPriorities, TaskStatuses, TaskType, todolistsAPI, UpdateTaskModelType} from '../../api/todolists-api'
+import {
+    RESULT_CODE,
+    TaskPriorities,
+    TaskStatuses,
+    TaskType,
+    todolistsAPI,
+    UpdateTaskModelType
+} from '../../api/todolists-api'
 import {Dispatch} from 'redux'
 import {AppRootStateType} from '../../app/store'
-import {setError, setErrorType, setStatus, setStatusType} from "../../app/app-reducer";
+import {setError, SetErrorType, setStatus, SetStatusType} from "../../app/app-reducer";
 import {Simulate} from "react-dom/test-utils";
 import error = Simulate.error;
 import axios, {AxiosError} from "axios";
+import {handleServerNetworkError} from "../../utils/errors-utils";
 
 const initialState: TasksStateType = {}
 
@@ -72,12 +80,6 @@ export const removeTaskTC = (taskId: string, todolistId: string) => (dispatch: D
         })
 }
 
-enum RESULT_CODE {
-    SUCCESS = 0,
-    ERROR = 1,
-    CAPTCHA = 10
-}
-
 export const addTaskTC = (title: string, todolistId: string) => async (dispatch: Dispatch<ActionsType>) => {
     dispatch(setStatus('loading'))
 
@@ -99,8 +101,7 @@ export const addTaskTC = (title: string, todolistId: string) => async (dispatch:
     } catch (e) {
         if (axios.isAxiosError<AxiosError<{ message: string }>>(e)) {
             const error = e.response ? e.response.data.message : e.message
-            dispatch(setError(error))
-            dispatch(setStatus('failed'))
+            handleServerNetworkError(dispatch, error)
         }
     }
 }
@@ -142,8 +143,7 @@ export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelT
                 }
             }).catch((error: AxiosError<{ message: string }>) => {
             const err = error.response ? error.response.data.message : error.message
-            dispatch(setError(err))
-            dispatch(setStatus('failed'))
+            handleServerNetworkError(dispatch, err)
         })
     }
 
@@ -167,5 +167,5 @@ type ActionsType =
     | RemoveTodolistActionType
     | SetTodolistsActionType
     | ReturnType<typeof setTasksAC>
-    | setStatusType
-    | setErrorType
+    | SetStatusType
+    | SetErrorType
