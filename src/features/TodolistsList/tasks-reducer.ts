@@ -3,6 +3,9 @@ import {TaskPriorities, TaskStatuses, TaskType, todolistsAPI, UpdateTaskModelTyp
 import {Dispatch} from 'redux'
 import {AppRootStateType} from '../../app/store'
 import {setError, setErrorType, setStatus, setStatusType} from "../../app/app-reducer";
+import {Simulate} from "react-dom/test-utils";
+import error = Simulate.error;
+import axios, {AxiosError} from "axios";
 
 const initialState: TasksStateType = {}
 
@@ -68,26 +71,40 @@ export const removeTaskTC = (taskId: string, todolistId: string) => (dispatch: D
             dispatch(setStatus('succeeded'))
         })
 }
-export const addTaskTC = (title: string, todolistId: string) => (dispatch: Dispatch<ActionsType>) => {
-    dispatch(setStatus('loading'))
-    todolistsAPI.createTask(todolistId, title)
-        .then(res => {
-            if (res.data.resultCode === 0) {
-                const task = res.data.data.item
-                const action = addTaskAC(task)
-                dispatch(action)
-                dispatch(setStatus('succeeded'))
-            } else {
-                if (res.data.messages.length) {
-                    dispatch(setError(res.data.messages[0]))
-                } else {
-                    dispatch(setError('some error'))
-                }
-                dispatch(setStatus('failed'))
-            }
 
-        })
+enum RESULT_CODE {
+    SUCCESS = 0,
+    ERROR = 1,
+    CAPTCHA = 10
 }
+
+export const addTaskTC = (title: string, todolistId: string) => async (dispatch: Dispatch<ActionsType>) => {
+    dispatch(setStatus('loading'))
+
+    try {
+        const res = await todolistsAPI.createTask(todolistId, title)
+        if (res.data.resultCode === RESULT_CODE.SUCCESS) {
+            const task = res.data.data.item
+            const action = addTaskAC(task)
+            dispatch(action)
+            dispatch(setStatus('succeeded'))
+        } else {
+            if (res.data.messages.length) {
+                dispatch(setError(res.data.messages[0]))
+            } else {
+                dispatch(setError('some error'))
+            }
+            dispatch(setStatus('failed'))
+        }
+    } catch (e) {
+        if (axios.isAxiosError<AxiosError<{ message: string }>>(e)) {
+            const error = e.response ? e.response.data.message : e.message
+            dispatch(setError(error))
+            dispatch(setStatus('failed'))
+        }
+    }
+}
+
 export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelType, todolistId: string) =>
     (dispatch: Dispatch<ActionsType>, getState: () => AppRootStateType) => {
         dispatch(setStatus('loading'))
@@ -111,10 +128,23 @@ export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelT
 
         todolistsAPI.updateTask(todolistId, taskId, apiModel)
             .then(res => {
-                const action = updateTaskAC(taskId, domainModel, todolistId)
-                dispatch(action)
-                dispatch(setStatus('succeeded'))
-            })
+                if (res.data.resultCode === RESULT_CODE.SUCCESS) {
+                    const action = updateTaskAC(taskId, domainModel, todolistId)
+                    dispatch(action)
+                    dispatch(setStatus('succeeded'))
+                } else {
+                    if (res.data.messages.length) {
+                        dispatch(setError(res.data.messages[0]))
+                    } else {
+                        dispatch(setError('some error'))
+                    }
+                    dispatch(setStatus('failed'))
+                }
+            }).catch((error: AxiosError<{ message: string }>) => {
+            const err = error.response ? error.response.data.message : error.message
+            dispatch(setError(err))
+            dispatch(setStatus('failed'))
+        })
     }
 
 // types
